@@ -1,25 +1,44 @@
 """
 Views for notifications app
 """
-from rest_framework import viewsets, status, filters
+
+from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-from apps.notifications.models import Notification, NotificationPreference, NotificationLog
-from apps.notifications.serializers import NotificationSerializer, NotificationPreferenceSerializer
+from drf_spectacular.utils import extend_schema
+
+from apps.notifications.models import (
+    Notification,
+    NotificationPreference,
+    NotificationLog
+)
+
+from apps.notifications.serializers import (
+    NotificationSerializer,
+    NotificationPreferenceSerializer
+)
 
 
+@extend_schema(tags=["notifications"])
 class NotificationViewSet(viewsets.ModelViewSet):
     """Notification management viewset"""
+
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['notification_type', 'is_read', 'priority']
-    search_fields = ['title', 'message']
-    ordering_fields = ['created_at', 'priority']
-    ordering = ['-created_at']
+
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter
+    ]
+
+    filterset_fields = ["notification_type", "is_read", "priority"]
+    search_fields = ["title", "message"]
+    ordering_fields = ["created_at", "priority"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         """Get notifications for current user"""
@@ -28,40 +47,43 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Save notification with recipient"""
         notification = serializer.save(recipient=self.request.user)
-        
-        # Log notification creation
+
         NotificationLog.objects.create(
             notification=notification,
-            channel='inapp',
-            status='sent' if self.request.user.notification_preference.inapp_dispatched else 'pending'
+            channel="inapp",
+            status="sent"
+            if self.request.user.notification_preference.inapp_dispatched
+            else "pending"
         )
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def mark_read(self, request, pk=None):
         """Mark notification as read"""
         notification = self.get_object()
         notification.is_read = True
         notification.read_at = timezone.now()
         notification.save()
-        
-        return Response({'detail': 'Notification marked as read'})
 
-    @action(detail=False, methods=['post'])
+        return Response({"detail": "Notification marked as read"})
+
+    @action(detail=False, methods=["post"])
     def mark_all_read(self, request):
         """Mark all notifications as read"""
         notifications = self.get_queryset().filter(is_read=False)
         now = timezone.now()
         notifications.update(is_read=True, read_at=now)
-        
-        return Response({'detail': f'{notifications.count()} notifications marked as read'})
 
-    @action(detail=False, methods=['get'])
+        return Response({
+            "detail": f"{notifications.count()} notifications marked as read"
+        })
+
+    @action(detail=False, methods=["get"])
     def unread_count(self, request):
         """Get count of unread notifications"""
         count = self.get_queryset().filter(is_read=False).count()
-        return Response({'unread_count': count})
+        return Response({"unread_count": count})
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def unread(self, request):
         """Get all unread notifications"""
         notifications = self.get_queryset().filter(is_read=False)
@@ -69,8 +91,10 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+@extend_schema(tags=["notifications"])
 class NotificationPreferenceViewSet(viewsets.ModelViewSet):
     """Notification preference management viewset"""
+
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationPreferenceSerializer
 
@@ -97,18 +121,33 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         """Update preference"""
-        partial = kwargs.pop('partial', False)
+        partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial
+        )
+
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
         return Response(serializer.data)
 
 
 # Utility function to create notifications
-def create_notification(recipient, notification_type, title, message, 
-                       priority='normal', related_object_id=None, related_object_type=None):
+def create_notification(
+    recipient,
+    notification_type,
+    title,
+    message,
+    priority="normal",
+    related_object_id=None,
+    related_object_type=None,
+):
     """Create a notification for a user"""
+
     notification = Notification.objects.create(
         recipient=recipient,
         notification_type=notification_type,
@@ -116,7 +155,7 @@ def create_notification(recipient, notification_type, title, message,
         message=message,
         priority=priority,
         related_object_id=related_object_id,
-        related_object_type=related_object_type
+        related_object_type=related_object_type,
     )
-    return notification
 
+    return notification

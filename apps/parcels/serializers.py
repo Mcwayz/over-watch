@@ -10,21 +10,20 @@ from utils.pricing import PricingEngine
 
 
 class ParcelImageSerializer(serializers.ModelSerializer):
-    """Serializer for ParcelImage model"""
+    parcel_tracking_number = serializers.CharField(source='parcel.tracking_number', read_only=True)
     uploaded_by_name = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
-    image_type_display = serializers.CharField(source='get_image_type_display', read_only=True)
 
     class Meta:
         model = ParcelImage
         fields = [
-            'id', 'parcel', 'image', 'image_type', 'image_type_display',
+            'id', 'parcel', 'parcel_tracking_number', 'image', 'image_type',
             'uploaded_by', 'uploaded_by_name', 'description', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'uploaded_by_name', 'image_type_display']
+        read_only_fields = ['uploaded_by', 'created_at', 'parcel_tracking_number', 'uploaded_by_name']
 
 
 class ParcelTrackingHistorySerializer(serializers.ModelSerializer):
-    """Serializer for ParcelTrackingHistory model"""
+    """Serializer for ParcelParcelTrackingHistory model"""
     updated_by_name = serializers.CharField(source='updated_by.get_full_name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     branch_name = serializers.CharField(source='branch.name', read_only=True)
@@ -37,14 +36,16 @@ class ParcelTrackingHistorySerializer(serializers.ModelSerializer):
 
 
 class ParcelTransitUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for ParcelTransitUpdate model"""
+    parcel_tracking_number = serializers.CharField(source='parcel.tracking_number', read_only=True)
     driver_name = serializers.CharField(source='driver.user.get_full_name', read_only=True)
 
     class Meta:
         model = ParcelTransitUpdate
-        fields = ['id', 'parcel', 'driver', 'driver_name', 'location_name',
-                  'latitude', 'longitude', 'transit_status', 'notes', 'created_at']
-        read_only_fields = ['id', 'created_at', 'driver_name']
+        fields = [
+            'id', 'parcel', 'parcel_tracking_number', 'driver', 'driver_name',
+            'location_name', 'latitude', 'longitude', 'transit_status', 'notes', 'created_at'
+        ]
+        read_only_fields = ['driver', 'driver_name', 'parcel_tracking_number', 'created_at']
 
 
 class ParcelDetailSerializer(serializers.ModelSerializer):
@@ -163,42 +164,35 @@ class ParcelCreateSerializer(serializers.ModelSerializer):
 
 
 class PickupRequestSerializer(serializers.ModelSerializer):
-    """Serializer for PickupRequest model"""
     customer_name = serializers.CharField(source='customer.user.get_full_name', read_only=True)
-    driver_name = serializers.CharField(source='assigned_driver.user.get_full_name', read_only=True)
+    assigned_driver_name = serializers.CharField(source='assigned_driver.user.get_full_name', read_only=True)
     destination_branch_name = serializers.CharField(source='destination_branch.name', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    pickup_fee_breakdown = serializers.SerializerMethodField()
+    estimated_parcel_tracking_number = serializers.CharField(source='estimated_parcel.tracking_number', read_only=True)
 
     class Meta:
         model = PickupRequest
         fields = [
             'id', 'customer', 'customer_name', 'pickup_address', 'parcel_description',
-            'weight_kg', 'destination_branch', 'destination_branch_name', 'status',
-            'status_display', 'preferred_pickup_date', 'preferred_pickup_time',
-            'assigned_driver', 'driver_name', 'pickup_date', 'estimated_parcel',
-            'rejection_reason', 'notes', 'pickup_fee_breakdown', 'created_at', 'updated_at'
+            'weight_kg', 'destination_branch', 'destination_branch_name',
+            'status', 'preferred_pickup_date', 'preferred_pickup_time',
+            'assigned_driver', 'assigned_driver_name',
+            'pickup_date', 'estimated_parcel', 'estimated_parcel_tracking_number',
+            'rejection_reason', 'notes', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'customer_name', 'driver_name', 'destination_branch_name',
-            'status_display', 'created_at', 'updated_at', 'pickup_fee_breakdown'
+            'customer_name', 'assigned_driver_name', 'destination_branch_name',
+            'estimated_parcel_tracking_number', 'created_at', 'updated_at'
         ]
-    
-    def get_pickup_fee_breakdown(self, obj):
-        """Calculate pickup fee if distance is available"""
-        # This would require distance calculation from pickup address to branch
-        # For now, return None - can be calculated when needed
-        return None
 
 
 class DeliveryProofSerializer(serializers.ModelSerializer):
-    """Serializer for DeliveryProof model"""
+    parcel_tracking_number = serializers.CharField(source='parcel.tracking_number', read_only=True)
     uploaded_by_name = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
 
     class Meta:
         model = DeliveryProof
         fields = [
-            'id', 'parcel', 'proof_image', 'uploaded_by', 'uploaded_by_name',
-            'delivery_notes', 'signature_required', 'signature_image', 'created_at'
+            'id', 'parcel', 'parcel_tracking_number', 'proof_image', 'uploaded_by',
+            'uploaded_by_name', 'delivery_notes', 'signature_required', 'signature_image', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'uploaded_by_name']
+        read_only_fields = ['uploaded_by', 'uploaded_by_name', 'parcel_tracking_number', 'created_at']

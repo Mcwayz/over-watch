@@ -1,51 +1,57 @@
-"""
-Views for authentication app
-"""
+"""Views for authentication app"""
+
 from rest_framework import status, viewsets, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.contrib.auth import authenticate
+from drf_spectacular.utils import extend_schema
+
 from apps.authentication.models import CustomUser, Role
 from apps.authentication.serializers import (
-    CustomTokenObtainPairSerializer, CustomUserSerializer, CustomUserCreateSerializer,
-    LoginSerializer, ChangePasswordSerializer, RoleSerializer
+    CustomTokenObtainPairSerializer,
+    CustomUserSerializer,
+    CustomUserCreateSerializer,
+    LoginSerializer,
+    ChangePasswordSerializer,
+    RoleSerializer,
 )
+
 from utils.audit import AuditLogger
 from utils.helpers import get_client_ip
 
 
+@extend_schema(tags=["authentication"])
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom JWT token view"""
     serializer_class = CustomTokenObtainPairSerializer
 
 
+@extend_schema(tags=["authentication"])
 class LoginView(generics.GenericAPIView):
     """User login view"""
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
+        user = serializer.validated_data["user"]
 
-        # Log login
         ip_address = get_client_ip(request)
         AuditLogger.log_login(user, ip_address=ip_address)
 
-        # Generate token
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
 
         return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': CustomUserSerializer(user).data
-        }, status=status.HTTP_200_OK)
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": CustomUserSerializer(user).data
+        })
 
 
+@extend_schema(tags=["authentication"])
 class RegisterView(generics.CreateAPIView):
     """User registration view"""
     queryset = CustomUser.objects.all()
@@ -54,12 +60,13 @@ class RegisterView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         user = serializer.save()
-        # Log user creation
+
         ip_address = get_client_ip(self.request)
+
         AuditLogger.log_action(
             user=None,
-            action='CREATE',
-            model_name='CustomUser',
+            action="CREATE",
+            model_name="CustomUser",
             object_id=str(user.id),
             object_display=user.username,
             description=f"New user {user.username} registered",
@@ -74,45 +81,46 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action == "create":
             return CustomUserCreateSerializer
         return CustomUserSerializer
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def current_user(self, request):
         """Get current user details"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def change_password(self, request):
         """Change user password"""
+
         user = request.user
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if not user.check_password(serializer.validated_data['old_password']):
+        if not user.check_password(serializer.validated_data["old_password"]):
             return Response(
-                {'old_password': 'Invalid password'},
+                {"old_password": "Invalid password"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        user.set_password(serializer.validated_data['new_password'])
+        user.set_password(serializer.validated_data["new_password"])
         user.save()
 
-        # Log password change
         ip_address = get_client_ip(request)
+
         AuditLogger.log_action(
             user=user,
-            action='UPDATE',
-            model_name='CustomUser',
+            action="UPDATE",
+            model_name="CustomUser",
             object_id=str(user.id),
             object_display=user.username,
-            description='Password changed',
+            description="Password changed",
             ip_address=ip_address
         )
 
-        return Response({'detail': 'Password changed successfully'})
+        return Response({"detail": "Password changed successfully"})
 
 
 class RoleViewSet(viewsets.ReadOnlyModelViewSet):

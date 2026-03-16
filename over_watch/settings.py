@@ -1,3 +1,4 @@
+
 """
 Django settings for over_watch project.
 
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
+    'drf_spectacular',
     # Local apps
     'apps.authentication.apps.AuthenticationConfig',
     'apps.branches.apps.BranchesConfig',
@@ -149,9 +151,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.CustomUser'
 
-# CORS Configuration
+# CORS Configuration - Backend API only
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
     "http://localhost:8000",
 ]
 
@@ -175,6 +176,7 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DATETIME_FORMAT': '%Y-%m-%dT%H:%M:%S%z',
 }
 
